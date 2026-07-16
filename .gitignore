@@ -22,3 +22,9 @@ frontend/node_modules/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Test scripts and temporary logs
+backend/*.log
+backend/test_*.py
+backend/*.png
+backend/modal_app_request.log

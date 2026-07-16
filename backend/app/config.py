@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     supabase_key: str = Field(default="", validation_alias="SUPABASE_KEY")
     llm_provider: str = Field(default="groq", validation_alias="LLM_PROVIDER")
     chroma_persist_dir: str = Field(default="./chroma_db", validation_alias="CHROMA_PERSIST_DIR")
+    cloudinary_url: str = Field(default="", validation_alias="CLOUDINARY_URL")
+    hf_token: str = Field(default="", validation_alias="HF_TOKEN")
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"),

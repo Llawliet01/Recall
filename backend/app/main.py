@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 import urllib.request
 import tempfile
 import json
@@ -9,15 +10,151 @@ from app.ocr import get_ocr_manager
 from app.embeddings import get_embedding_manager
 from app.database import get_vector_db
 from app.config import settings
+import cloudinary
+import cloudinary.uploader
+import urllib.parse
 
-# LangChain & LLM Imports
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_groq import ChatGroq
-from langchain_google_genai import ChatGoogleGenerativeAI
-import google.generativeai as genai
-from groq import Groq
+# Configure Cloudinary globally using settings URL
+if settings.cloudinary_url:
+    try:
+        parsed_url = urllib.parse.urlparse(settings.cloudinary_url)
+        cloud_name = parsed_url.hostname
+        api_key = parsed_url.username
+        api_secret = parsed_url.password
+        if cloud_name and api_key and api_secret:
+            cloudinary.config(
+                cloud_name=cloud_name,
+                api_key=api_key,
+                api_secret=api_secret,
+                secure=True
+            )
+            print(f"Cloudinary: Successfully configured with cloud_name={cloud_name}")
+        else:
+            print("Cloudinary: Failed to parse configuration URL")
+    except Exception as e:
+        print(f"Cloudinary configuration failed: {e}")
 
-app = FastAPI(title="KnoSnap Backend API", version="1.0.0")
+
+# --- (Top-level LLM imports removed for startup performance optimization) ---
+
+app = FastAPI(title="Recall AI Backend API", version="1.0.0")
+
+# Helper: Resize image to speed up CPU OCR calculations
+def optimize_image_size(file_path: str) -> None:
+    try:
+        from PIL import Image
+        with Image.open(file_path) as img:
+            width, height = img.size
+            max_dimension = 800  # Keep 800px limit for massive pixel reduction
+            
+            if width <= max_dimension and height <= max_dimension:
+                return
+                
+            if width > height:
+                new_width = max_dimension
+                new_height = int(height * (max_dimension / width))
+            else:
+                new_height = max_dimension
+                new_width = int(width * (max_dimension / height))
+                
+            # Resize keeping RGB format to prevent model accuracy degradation and extra box checks
+            resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            
+            img_format = img.format or "PNG"
+            resized_img.save(file_path, format=img_format, optimize=True, quality=85)
+            print(f"PIL: Optimized size from {width}x{height} to {new_width}x{new_height} (RGB)")
+    except Exception as e:
+        print(f"PIL Image optimization warning: {e}")
+
+# Helper: Direct Multimodal Gemini Vision call to extract text and summary in 2 seconds
+def get_multimodal_ocr_and_summary(image_path: str) -> dict:
+    if not settings.gemini_api_key:
+        raise ValueError("Missing GEMINI_API_KEY")
+        
+    try:
+        import google.generativeai as genai
+        from PIL import Image
+        img = Image.open(image_path)
+        
+        prompt = """
+        Analyze this image and extract the following:
+        1. 'ocr_text': The complete, exact raw text found in the image. Do not summarize or skip anything. Keep it formatted as text blocks.
+        2. 'title': A short, descriptive title (e.g., 'Groq Model Limits Dashboard' or 'Yug Patel Resume').
+        3. 'description': A 2-sentence summary of the content and purpose of the image.
+        4. 'tags': A list of 3-5 relevant keywords/tags.
+        
+        Respond strictly in a JSON object matching this structure:
+        {
+            "ocr_text": "extracted text",
+            "title": "descriptive title",
+            "description": "2-sentence summary description",
+            "tags": ["tag1", "tag2", "tag3"]
+        }
+        """
+        
+        genai.configure(api_key=settings.gemini_api_key)
+        # Use gemini-3.5-flash as it is the active, fast, and highly capable multimodal production model
+        model = genai.GenerativeModel(
+            model_name="gemini-3.5-flash",
+            generation_config={"response_mime_type": "application/json"}
+        )
+        
+        response = model.generate_content([img, prompt])
+        return json.loads(response.text)
+    except Exception as e:
+        print(f"Gemini Multimodal Vision API failed: {e}")
+        raise e
+
+# Helper: Direct Multimodal Groq Vision call to extract text and summary in under 1 second
+def get_groq_multimodal_ocr_and_summary(image_path: str) -> dict:
+    if not settings.groq_api_key:
+        raise ValueError("Missing GROQ_API_KEY")
+        
+    try:
+        import base64
+        with open(image_path, "rb") as image_file:
+            base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            
+        prompt = """
+        Analyze this image and extract the following:
+        1. 'ocr_text': The complete, exact raw text found in the image. Do not summarize or skip anything. Keep it formatted as text blocks.
+        2. 'title': A short, descriptive title (e.g., 'Groq Model Limits Dashboard' or 'Yug Patel Resume').
+        3. 'description': A 2-sentence summary of the content and purpose of the image.
+        4. 'tags': A list of 3-5 relevant keywords/tags.
+        
+        Respond strictly in a JSON object matching this structure:
+        {
+            "ocr_text": "extracted text",
+            "title": "descriptive title",
+            "description": "2-sentence summary description",
+            "tags": ["tag1", "tag2", "tag3"]
+        }
+        """
+        
+        from groq import Groq
+        client = Groq(api_key=settings.groq_api_key)
+        completion = client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            response_format={"type": "json_object"}
+        )
+        return json.loads(completion.choices[0].message.content)
+    except Exception as e:
+        print(f"Groq Multimodal Vision API failed: {e}")
+        raise e
 
 # Enable CORS for Next.js frontend calls
 app.add_middleware(
@@ -49,6 +186,9 @@ def download_image_to_temp(image_url: str) -> str:
 
 # Helper: Direct LLM call for Structured Summarization
 def get_structured_summary(ocr_text: str) -> dict:
+    import google.generativeai as genai
+    from groq import Groq
+    
     # If keys are missing, return a mocked placeholder
     if not settings.gemini_api_key and not settings.groq_api_key:
         print("Warning: Missing API keys. Returning mock summary.")
@@ -75,68 +215,54 @@ def get_structured_summary(ocr_text: str) -> dict:
         "tags": ["tag1", "tag2", "tag3"]
     }}
     """
-    
-    # Bidirectional Fallback logic based on settings
-    primary = settings.llm_provider.lower()
-    
-    if primary == "google":
-        # 1. Try Gemini first
-        if settings.gemini_api_key:
-            try:
-                genai.configure(api_key=settings.gemini_api_key)
-                model = genai.GenerativeModel(
-                    model_name="gemini-3.1-flash-lite",
-                    generation_config={"response_mime_type": "application/json"}
-                )
-                response = model.generate_content(prompt)
-                return json.loads(response.text)
-            except Exception as e:
-                print(f"Primary Gemini summarization failed: {e}. Falling back to Groq...")
-        
-        # 2. Fallback to Groq
-        if settings.groq_api_key:
-            try:
-                client = Groq(api_key=settings.groq_api_key)
-                completion = client.chat.completions.create(
-                    messages=[{"role": "user", "content": prompt}],
-                    model="llama-3.1-8b-instant",
-                    response_format={"type": "json_object"}
-                )
-                return json.loads(completion.choices[0].message.content)
-            except Exception as e:
-                print(f"Fallback Groq summarization failed: {e}")
-                
-    else: # Default: groq
-        # 1. Try Groq first
-        if settings.groq_api_key:
-            try:
-                client = Groq(api_key=settings.groq_api_key)
-                completion = client.chat.completions.create(
-                    messages=[{"role": "user", "content": prompt}],
-                    model="llama-3.1-8b-instant",
-                    response_format={"type": "json_object"}
-                )
-                return json.loads(completion.choices[0].message.content)
-            except Exception as e:
-                print(f"Primary Groq summarization failed: {e}. Falling back to Gemini...")
-                
-        # 2. Fallback to Gemini
-        if settings.gemini_api_key:
-            try:
-                genai.configure(api_key=settings.gemini_api_key)
-                model = genai.GenerativeModel(
-                    model_name="gemini-3.1-flash-lite",
-                    generation_config={"response_mime_type": "application/json"}
-                )
-                response = model.generate_content(prompt)
-                return json.loads(response.text)
-            except Exception as e:
-                print(f"Fallback Gemini summarization failed: {e}")
-            
-    # Ultimate fallback if APIs fail at runtime
+
+    # --- UPLOAD SUMMARIZATION: 3-TIER FALLBACK CHAIN ---
+    # Summarization is a lightweight structured task — use fast/cheap models first,
+    # save heavyweight reasoning models for chat/RAG where they matter more.
+
+    # Tier 1: Gemini 3.1 Flash Lite — fast, cheap, excellent JSON structured output
+    if settings.gemini_api_key:
+        try:
+            genai.configure(api_key=settings.gemini_api_key)
+            gemini_model = genai.GenerativeModel(
+                model_name="gemini-3.1-flash-lite",
+                generation_config={"response_mime_type": "application/json"}
+            )
+            response = gemini_model.generate_content(prompt)
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"[Upload Tier 1] Gemini Flash Lite failed: {e}. Trying Groq 8b...")
+
+    # Tier 2: Groq Llama 8b — different provider, independent rate limits, fast
+    if settings.groq_api_key:
+        try:
+            client = Groq(api_key=settings.groq_api_key)
+            completion = client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model="llama-3.1-8b-instant",
+                response_format={"type": "json_object"}
+            )
+            return json.loads(completion.choices[0].message.content)
+        except Exception as e:
+            print(f"[Upload Tier 2] Groq 8b failed: {e}. Trying Gemini 3.5 Flash...")
+
+    # Tier 3: Gemini 3.5 Flash — most capable Google model, final safety net
+    if settings.gemini_api_key:
+        try:
+            genai.configure(api_key=settings.gemini_api_key)
+            gemini_model = genai.GenerativeModel(
+                model_name="gemini-3.5-flash",
+                generation_config={"response_mime_type": "application/json"}
+            )
+            response = gemini_model.generate_content(prompt)
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"[Upload Tier 3] Gemini 3.5 Flash failed: {e}")
+
+    # Ultimate fallback — all APIs down/rate-limited
     return {
         "title": "OCR Extracted Screenshot",
-        "description": "OCR successfully extracted text, but the AI API endpoints returned an error or rate-limited the request.",
+        "description": "OCR successfully extracted text, but all AI summarization APIs are temporarily unavailable.",
         "tags": ["error", "api-fail"]
     }
 
@@ -172,7 +298,7 @@ def scrape_webpage(url: str) -> str:
 
 @app.get("/")
 def read_root():
-    return {"message": "KnoSnap API Server is running!"}
+    return {"message": "Recall AI API Server is running!"}
 
 @app.post("/api/upload-file")
 async def upload_raw_file(file: UploadFile = File(...), background_tasks: BackgroundTasks = None):
@@ -188,24 +314,82 @@ async def upload_raw_file(file: UploadFile = File(...), background_tasks: Backgr
         with open(local_path, "wb") as f:
             f.write(content)
             
-        # Run PaddleOCR
-        ocr_manager = get_ocr_manager()
-        ocr_text = ocr_manager.extract_text(local_path)
-        
-        if not ocr_text.strip():
-            ocr_text = "No readable text found in screenshot."
+        # Optimize image dimensions before passing to local CPU PaddleOCR
+        optimize_image_size(local_path)
             
-        # Get structured summary
-        summary = get_structured_summary(ocr_text)
+        # Try Groq Multimodal Vision first (takes < 1 second)
+        ocr_text = ""
+        summary = {}
+        processed_by_vision = False
         
-        # Add to ChromaDB
+        if settings.groq_api_key:
+            try:
+                print("Processing upload with Groq Llama-4 Scout Vision...")
+                data = get_groq_multimodal_ocr_and_summary(local_path)
+                ocr_text = data.get("ocr_text", "")
+                summary = {
+                    "title": data.get("title", "Untitled Screenshot"),
+                    "description": data.get("description", ""),
+                    "tags": data.get("tags", [])
+                }
+                processed_by_vision = True
+                print("Groq Vision processed successfully!")
+            except Exception as e:
+                print(f"Groq Vision failed: {e}. Trying Gemini Vision...")
+                
+        # Try Gemini Multimodal Vision second (fallback)
+        if not processed_by_vision and settings.gemini_api_key:
+            try:
+                print("Processing upload with Gemini Multimodal Vision...")
+                data = get_multimodal_ocr_and_summary(local_path)
+                ocr_text = data.get("ocr_text", "")
+                summary = {
+                    "title": data.get("title", "Untitled Screenshot"),
+                    "description": data.get("description", ""),
+                    "tags": data.get("tags", [])
+                }
+                processed_by_vision = True
+                print("Gemini Multimodal Vision processed successfully!")
+            except Exception as e:
+                print(f"Gemini Vision failed, falling back to local CPU PaddleOCR: {e}")
+                
+        if not processed_by_vision:
+            # Fallback: Run local CPU PaddleOCR
+            ocr_manager = get_ocr_manager()
+            ocr_text = ocr_manager.extract_text(local_path)
+            
+            if not ocr_text.strip():
+                ocr_text = "No readable text found in screenshot."
+                
+            # Get structured summary
+            summary = get_structured_summary(ocr_text)
+        
+        # Upload the compressed image to Cloudinary
+        image_url = f"http://localhost:8000/temp/{item_id}{file_ext}" # fallback mock
+        if settings.cloudinary_url:
+            try:
+                print(f"Uploading image to Cloudinary...")
+                upload_res = cloudinary.uploader.upload(
+                    local_path,
+                    folder="recall_ai",
+                    public_id=item_id,
+                    overwrite=True,
+                    resource_type="image"
+                )
+                image_url = upload_res.get("secure_url") or image_url
+                print(f"Cloudinary: Uploaded successfully! URL: {image_url}")
+            except Exception as cl_err:
+                print(f"Cloudinary upload failed, falling back: {cl_err}")
+
+        # Add to vector database
         vector_db = get_vector_db()
         metadata = {
             "type": "screenshot",
-            "image_url": f"http://localhost:8000/temp/{item_id}{file_ext}", # Mock local path
+            "image_url": image_url,
             "title": summary.get("title", "Untitled Screenshot"),
             "description": summary.get("description", ""),
-            "tags": json.dumps(summary.get("tags", []))
+            "tags": json.dumps(summary.get("tags", [])),
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         vector_db.add_item(
@@ -239,24 +423,65 @@ async def upload_screenshot(payload: UploadRequest, background_tasks: Background
         cleanup_temp = True
         
     try:
-        # 1. Run local PaddleOCR to extract text
-        ocr_manager = get_ocr_manager()
-        ocr_text = ocr_manager.extract_text(local_path)
+        # Optimize downloaded image dimensions before passing to local CPU PaddleOCR
+        optimize_image_size(local_path)
+
+        # Try Groq Multimodal Vision first (takes < 1 second)
+        ocr_text = ""
+        summary = {}
+        processed_by_vision = False
         
-        if not ocr_text.strip():
-            ocr_text = "No readable text found in screenshot."
+        if settings.groq_api_key:
+            try:
+                print("Processing URL upload with Groq Llama-4 Scout Vision...")
+                data = get_groq_multimodal_ocr_and_summary(local_path)
+                ocr_text = data.get("ocr_text", "")
+                summary = {
+                    "title": data.get("title", "Untitled Screenshot"),
+                    "description": data.get("description", ""),
+                    "tags": data.get("tags", [])
+                }
+                processed_by_vision = True
+                print("Groq Vision processed successfully!")
+            except Exception as e:
+                print(f"Groq Vision failed: {e}. Trying Gemini Vision...")
+
+        # Try Gemini Multimodal Vision second (fallback)
+        if not processed_by_vision and settings.gemini_api_key:
+            try:
+                print("Processing URL upload with Gemini Multimodal Vision...")
+                data = get_multimodal_ocr_and_summary(local_path)
+                ocr_text = data.get("ocr_text", "")
+                summary = {
+                    "title": data.get("title", "Untitled Screenshot"),
+                    "description": data.get("description", ""),
+                    "tags": data.get("tags", [])
+                }
+                processed_by_vision = True
+                print("Gemini Multimodal Vision processed successfully!")
+            except Exception as e:
+                print(f"Gemini Vision failed, falling back to local CPU PaddleOCR: {e}")
+                
+        if not processed_by_vision:
+            # 1. Run local PaddleOCR to extract text
+            ocr_manager = get_ocr_manager()
+            ocr_text = ocr_manager.extract_text(local_path)
             
-        # 2. Get structured summary from LLM
-        summary = get_structured_summary(ocr_text)
+            if not ocr_text.strip():
+                ocr_text = "No readable text found in screenshot."
+                
+            # 2. Get structured summary from LLM
+            summary = get_structured_summary(ocr_text)
         
-        # 3. Save to local vector database (ChromaDB)
+        # 3. Save to vector database
         vector_db = get_vector_db()
         metadata = {
             "type": "screenshot",
             "image_url": payload.image_url,
             "title": summary.get("title", "Untitled Screenshot"),
             "description": summary.get("description", ""),
-            "tags": json.dumps(summary.get("tags", []))
+            "tags": json.dumps(summary.get("tags", [])),
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         # We index the text content
@@ -291,14 +516,15 @@ async def add_bookmark(payload: LinkRequest):
         # 2. Summarize
         summary = get_structured_summary(truncated_text)
         
-        # 3. Add to ChromaDB
+        # 3. Add to vector database
         vector_db = get_vector_db()
         metadata = {
             "type": "link",
             "url": payload.url,
             "title": summary.get("title", "Untitled Link"),
             "description": summary.get("description", ""),
-            "tags": json.dumps(summary.get("tags", []))
+            "tags": json.dumps(summary.get("tags", [])),
+            "created_at": datetime.now(timezone.utc).isoformat()
         }
         
         vector_db.add_item(
@@ -324,12 +550,26 @@ def search_database(payload: SearchRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {e}")
 
+@app.get("/api/items")
+def get_items(limit: int = 50):
+    try:
+        vector_db = get_vector_db()
+        results = vector_db.get_all_items(limit=limit)
+        return {"items": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch items: {e}")
+
+
 @app.post("/api/chat")
 def chat_with_brain(payload: ChatRequest):
+    from langchain_core.prompts import ChatPromptTemplate
+    from langchain_groq import ChatGroq
+    from langchain_google_genai import ChatGoogleGenerativeAI
+
     # If keys are missing, return a mocked RAG chat response
     if not settings.gemini_api_key and not settings.groq_api_key:
         return {
-            "answer": "Hello! I am KnoSnap AI. Please add your GEMINI_API_KEY or GROQ_API_KEY in the backend `.env` file to chat with your saved screenshots. (This is a mock response).",
+            "answer": "Hello! I am Recall AI. Please add your GEMINI_API_KEY or GROQ_API_KEY in the backend `.env` file to chat with your saved screenshots. (This is a mock response).",
             "sources": []
         }
 
@@ -354,19 +594,26 @@ def chat_with_brain(payload: ChatRequest):
         if not context_str.strip():
             context_str = "No relevant saved screenshots or bookmarks found in your personal database."
 
-        # 2. Build LangChain models with Fallback Chain
-        # Primary Model: Groq Llama-3.3-70b-versatile
-        # Fallbacks: Groq Llama-3.1-8b -> Gemini 3.1 Flash Lite -> Gemini 3.5 Flash
+        # 2. Build LangChain models with 5-Tier Fallback Chain
+        # Tier 1: Llama 70b (Groq)       — best reasoning for RAG
+        # Tier 2: Llama 8b (Groq)         — lighter, less rate-limited
+        # Tier 3: GPT-OSS 120b (Groq)     — most powerful, used as last Groq resort
+        # Tier 4: Gemini 3.1 Flash Lite   — different provider entirely
+        # Tier 5: Gemini 3.5 Flash        — strongest Google model, final safety net
         fallback_models = []
-        
+
         if settings.groq_api_key:
             llama_8b = ChatGroq(
                 model="llama-3.1-8b-instant",
                 groq_api_key=settings.groq_api_key
             )
-            # Add to fallbacks
+            gpt_oss_120b = ChatGroq(
+                model="openai/gpt-oss-120b",
+                groq_api_key=settings.groq_api_key
+            )
             fallback_models.append(llama_8b)
-            
+            fallback_models.append(gpt_oss_120b)
+
         if settings.gemini_api_key:
             gemini_lite = ChatGoogleGenerativeAI(
                 model="gemini-3.1-flash-lite",
@@ -379,21 +626,24 @@ def chat_with_brain(payload: ChatRequest):
             fallback_models.append(gemini_lite)
             fallback_models.append(gemini_35)
 
-        # Initialize the primary model (Groq 70b)
+        # Primary model: Groq Llama 70b (best speed + quality for RAG)
         if settings.groq_api_key:
             primary_model = ChatGroq(
                 model="llama-3.3-70b-versatile",
                 groq_api_key=settings.groq_api_key
             )
         else:
-            # If Groq is missing, make Gemini the primary
+            # If no Groq key, start from Gemini lite as primary
             primary_model = ChatGoogleGenerativeAI(
                 model="gemini-3.1-flash-lite",
                 google_api_key=settings.gemini_api_key
             )
-            fallback_models = [ChatGoogleGenerativeAI(model="gemini-3.5-flash", google_api_key=settings.gemini_api_key)]
+            fallback_models = [ChatGoogleGenerativeAI(
+                model="gemini-3.5-flash",
+                google_api_key=settings.gemini_api_key
+            )]
 
-        # Bind fallbacks
+        # Bind all fallbacks into a single chain
         if fallback_models:
             model_with_fallback = primary_model.with_fallbacks(fallback_models)
         else:
@@ -401,7 +651,7 @@ def chat_with_brain(payload: ChatRequest):
 
         # 3. Construct Prompt
         prompt = ChatPromptTemplate.from_messages([
-            ("system", """You are KnoSnap AI, an intelligent personal knowledge assistant. 
+            ("system", """You are Recall AI, an intelligent personal knowledge assistant. 
 Your job is to answer the user's question using ONLY the provided personal bookmarks/screenshots context details.
 If the answer cannot be verified from the context, state that you do not know. Do not guess or hallucinate.
 When referencing details, you can mention the Source number (e.g. [Source 1]).

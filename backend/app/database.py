@@ -5,9 +5,16 @@ from typing import List, Dict, Any
 
 class VectorDB:
     def __init__(self):
-        print(f"Connecting to Supabase Database at: {settings.supabase_url}")
+        # Sanitize URL by removing trailing rest/v1 suffixes if present
+        url = settings.supabase_url.strip()
+        if url.endswith("/rest/v1/"):
+            url = url[:-9]
+        elif url.endswith("/rest/v1"):
+            url = url[:-8]
+            
+        print(f"Connecting to Supabase Database at: {url}")
         # Initialize Supabase client
-        self.client: Client = create_client(settings.supabase_url, settings.supabase_key)
+        self.client: Client = create_client(url, settings.supabase_key)
         self.embed_manager = get_embedding_manager()
 
     def add_item(self, item_id: str, text: str, metadata: Dict[str, Any]):
@@ -61,6 +68,27 @@ class VectorDB:
         except Exception as e:
             print(f"Supabase pgvector delete failed: {e}")
             raise e
+
+    def get_all_items(self, limit: int = 100) -> List[Dict[str, Any]]:
+        try:
+            response = self.client.table("items") \
+                .select("id, content, metadata") \
+                .order("metadata->>created_at", desc=True, nullsfirst=False) \
+                .limit(limit) \
+                .execute()
+            formatted_results = []
+            if response and response.data:
+                for row in response.data:
+                    formatted_results.append({
+                        "id": row.get("id"),
+                        "metadata": row.get("metadata"),
+                        "document": row.get("content")
+                    })
+            return formatted_results
+        except Exception as e:
+            print(f"Supabase pgvector get_all_items failed: {e}")
+            raise e
+
 
 vector_db = None
 
