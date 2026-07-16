@@ -3,8 +3,9 @@ from datetime import datetime, timezone
 import urllib.request
 import tempfile
 import json
-from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from app.auth import get_current_user
 from app.schemas import UploadRequest, LinkRequest, SearchRequest, ChatRequest
 from app.ocr import get_ocr_manager
 from app.embeddings import get_embedding_manager
@@ -341,7 +342,7 @@ def read_root():
     return {"message": "Recall AI API Server is running!"}
 
 @app.post("/api/upload-file")
-async def upload_raw_file(file: UploadFile = File(...), background_tasks: BackgroundTasks = None):
+async def upload_raw_file(file: UploadFile = File(...), background_tasks: BackgroundTasks = None, user_id: str = Depends(get_current_user)):
     try:
         import uuid
         item_id = str(uuid.uuid4())
@@ -435,7 +436,8 @@ async def upload_raw_file(file: UploadFile = File(...), background_tasks: Backgr
         vector_db.add_item(
             item_id=item_id,
             text=f"Title: {metadata['title']}\nDescription: {metadata['description']}\nOCR Text: {ocr_text}",
-            metadata=metadata
+            metadata=metadata,
+            user_id=user_id
         )
         
         # We can run cleanup in background or keep it for temporary serve
@@ -453,7 +455,7 @@ async def upload_raw_file(file: UploadFile = File(...), background_tasks: Backgr
         raise HTTPException(status_code=500, detail=f"Raw upload processing failed: {e}")
 
 @app.post("/api/upload")
-async def upload_screenshot(payload: UploadRequest, background_tasks: BackgroundTasks):
+async def upload_screenshot(payload: UploadRequest, background_tasks: BackgroundTasks, user_id: str = Depends(get_current_user)):
     local_path = payload.local_path
     cleanup_temp = False
     
@@ -528,7 +530,8 @@ async def upload_screenshot(payload: UploadRequest, background_tasks: Background
         vector_db.add_item(
             item_id=payload.id,
             text=f"Title: {metadata['title']}\nDescription: {metadata['description']}\nOCR Text: {ocr_text}",
-            metadata=metadata
+            metadata=metadata,
+            user_id=user_id
         )
         
         return {
@@ -545,7 +548,7 @@ async def upload_screenshot(payload: UploadRequest, background_tasks: Background
             background_tasks.add_task(os.remove, local_path)
 
 @app.post("/api/link")
-async def add_bookmark(payload: LinkRequest):
+async def add_bookmark(payload: LinkRequest, user_id: str = Depends(get_current_user)):
     try:
         # 1. Scrape text content from webpage
         scraped_text = scrape_webpage(payload.url)
@@ -570,7 +573,8 @@ async def add_bookmark(payload: LinkRequest):
         vector_db.add_item(
             item_id=payload.id,
             text=f"Title: {metadata['title']}\nDescription: {metadata['description']}\nWeb Page Content: {truncated_text[:3000]}",
-            metadata=metadata
+            metadata=metadata,
+            user_id=user_id
         )
         
         return {
@@ -582,26 +586,26 @@ async def add_bookmark(payload: LinkRequest):
         raise HTTPException(status_code=500, detail=f"Failed to process link: {e}")
 
 @app.post("/api/search")
-def search_database(payload: SearchRequest):
+def search_database(payload: SearchRequest, user_id: str = Depends(get_current_user)):
     try:
         vector_db = get_vector_db()
-        results = vector_db.search_similar(payload.query, limit=payload.limit)
+        results = vector_db.search_similar(payload.query, user_id=user_id, limit=payload.limit)
         return {"results": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {e}")
 
 @app.get("/api/items")
-def get_items(limit: int = 50):
+def get_items(limit: int = 50, user_id: str = Depends(get_current_user)):
     try:
         vector_db = get_vector_db()
-        results = vector_db.get_all_items(limit=limit)
+        results = vector_db.get_all_items(user_id=user_id, limit=limit)
         return {"items": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch items: {e}")
 
 
 @app.post("/api/chat")
-def chat_with_brain(payload: ChatRequest):
+def chat_with_brain(payload: ChatRequest, user_id: str = Depends(get_current_user)):
     from langchain_core.prompts import ChatPromptTemplate
     from langchain_groq import ChatGroq
     from langchain_google_genai import ChatGoogleGenerativeAI
@@ -620,7 +624,7 @@ def chat_with_brain(payload: ChatRequest):
     try:
         # 1. Query ChromaDB for similar context documents
         vector_db = get_vector_db()
-        context_docs = vector_db.search_similar(payload.question, limit=3)
+        context_docs = vector_db.search_similar(payload.question, user_id=user_id, limit=3)
         
         # Format the context text
         context_str = ""

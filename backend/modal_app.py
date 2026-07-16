@@ -40,6 +40,8 @@ image = (
         "cloudinary",
         "huggingface_hub",
         "numpy",
+        "pyjwt",
+        "cryptography",
     )
     .run_commands("python -m playwright install chromium --with-deps")
     # Bake application code and secrets into the image

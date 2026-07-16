@@ -17,12 +17,14 @@ class VectorDB:
         self.client: Client = create_client(url, settings.supabase_key)
         self.embed_manager = get_embedding_manager()
 
-    def add_item(self, item_id: str, text: str, metadata: Dict[str, Any]):
+    def add_item(self, item_id: str, text: str, metadata: Dict[str, Any], user_id: str):
         # 1. Generate local 384-dim embedding
         embedding = self.embed_manager.get_embedding(text)
         
-        # 2. Insert or update the items table in Supabase
-        # We store id, text (content), metadata JSON, and the embedding array
+        # 2. Inject user_id into metadata JSON
+        metadata = {**metadata, "user_id": user_id}
+        
+        # 3. Insert or update the items table in Supabase
         try:
             self.client.table("items").upsert({
                 "id": item_id,
@@ -30,49 +32,57 @@ class VectorDB:
                 "metadata": metadata,
                 "embedding": embedding
             }).execute()
-            print(f"Supabase pgvector: Successfully indexed item {item_id}")
+            print(f"Supabase pgvector: Successfully indexed item {item_id} for user {user_id}")
         except Exception as e:
             print(f"Supabase pgvector insert failed: {e}")
             raise e
 
-    def search_similar(self, query_text: str, limit: int = 5) -> List[Dict[str, Any]]:
+    def search_similar(self, query_text: str, user_id: str, limit: int = 5) -> List[Dict[str, Any]]:
         # 1. Generate local embedding
         query_embedding = self.embed_manager.get_embedding(query_text)
         
         # 2. Call the match_items RPC database function in Supabase
+        # We query a larger limit (e.g. 100) and filter by user_id in Python
         try:
             response = self.client.rpc("match_items", {
                 "query_embedding": query_embedding,
-                "match_threshold": 0.0, # returns all matches, ordered by similarity
-                "match_count": limit
+                "match_threshold": 0.0,
+                "match_count": 100
             }).execute()
             
             formatted_results = []
             if response and response.data:
                 for row in response.data:
-                    formatted_results.append({
-                        "id": row.get("id"),
-                        "metadata": row.get("metadata"),
-                        "document": row.get("content"),
-                        "score": round(row.get("similarity", 0.0), 4)
-                    })
-            return formatted_results
+                    meta = row.get("metadata") or {}
+                    if meta.get("user_id") == user_id:
+                        formatted_results.append({
+                            "id": row.get("id"),
+                            "metadata": meta,
+                            "document": row.get("content"),
+                            "score": round(row.get("similarity", 0.0), 4)
+                        })
+                        
+            # Return only the top matching elements sliced to the limit
+            return formatted_results[:limit]
         except Exception as e:
             print(f"Supabase pgvector search RPC failed: {e}")
             raise e
 
-    def delete_item(self, item_id: str):
+    def delete_item(self, item_id: str, user_id: str):
         try:
-            self.client.table("items").delete().eq("id", item_id).execute()
-            print(f"Supabase pgvector: Deleted item {item_id}")
+            # Enforce that user can only delete their own item
+            self.client.table("items").delete().eq("id", item_id).eq("metadata->>user_id", user_id).execute()
+            print(f"Supabase pgvector: Deleted item {item_id} for user {user_id}")
         except Exception as e:
             print(f"Supabase pgvector delete failed: {e}")
             raise e
 
-    def get_all_items(self, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_all_items(self, user_id: str, limit: int = 100) -> List[Dict[str, Any]]:
         try:
+            # Filter query by metadata->>user_id
             response = self.client.table("items") \
                 .select("id, content, metadata") \
+                .eq("metadata->>user_id", user_id) \
                 .order("metadata->>created_at", desc=True, nullsfirst=False) \
                 .limit(limit) \
                 .execute()

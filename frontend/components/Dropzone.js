@@ -4,15 +4,17 @@ import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, CheckCircle2, AlertCircle, Loader2, ImagePlus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 export default function Dropzone({ onUploadSuccess }) {
+  const { session } = useAuth();
   const [isUploading, setIsUploading] = useState(false);
   const [statusMsg, setStatusMsg] = useState(null);
   const [statusType, setStatusType] = useState(null);
   const [progress, setProgress] = useState(0);
 
   const onDrop = useCallback(async (acceptedFiles) => {
-    if (!acceptedFiles || acceptedFiles.length === 0) return;
+    if (!acceptedFiles || acceptedFiles.length === 0 || !session) return;
 
     setIsUploading(true);
     setProgress(10);
@@ -30,6 +32,9 @@ export default function Dropzone({ onUploadSuccess }) {
 
           const response = await fetch('https://patelyug01234--recall-fastapi-app.modal.run/api/upload-file', {
             method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${session.access_token}`
+            },
             body: formData,
           });
 

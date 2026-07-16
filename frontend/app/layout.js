@@ -26,13 +26,17 @@ export const metadata = {
   description: "Save, search and chat with your screenshots and bookmarks using advanced semantic indexing.",
 };
 
+import { AuthProvider } from "../context/AuthContext";
+
 export default function RootLayout({ children }) {
   return (
     <html
       lang="en"
       className={`${outfit.variable} ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <AuthProvider>{children}</AuthProvider>
+      </body>
     </html>
   );
 }

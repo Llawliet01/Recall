@@ -5,6 +5,8 @@ import { Send, Sparkles, ExternalLink, Image as ImageIcon, Link as LinkIcon, X, 
 import { motion, AnimatePresence } from 'framer-motion';
 import Logo from './Logo';
 
+import { useAuth } from '../context/AuthContext';
+
 const SUGGESTED_QUERIES = [
   'What error did I capture last?',
   'Summarize my saved articles',
@@ -13,6 +15,7 @@ const SUGGESTED_QUERIES = [
 ];
 
 export default function ChatSidebar({ isOpen, onClose }) {
+  const { session } = useAuth();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -26,7 +29,7 @@ export default function ChatSidebar({ isOpen, onClose }) {
 
   const handleSend = async (text) => {
     const query = text || input;
-    if (!query.trim() || isSending) return;
+    if (!query.trim() || isSending || !session) return;
 
     const userMessage = { role: 'user', content: query };
     setMessages(prev => [...prev, userMessage]);
@@ -36,7 +39,10 @@ export default function ChatSidebar({ isOpen, onClose }) {
     try {
       const response = await fetch('https://patelyug01234--recall-fastapi-app.modal.run/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({
           question: query,
           history: messages.slice(-6),

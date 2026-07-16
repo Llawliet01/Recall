@@ -9,6 +9,9 @@ import Logo from '../components/Logo';
 import CardGrid from '../components/CardGrid';
 import ChatSidebar from '../components/ChatSidebar';
 
+import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'next/navigation';
+
 const FILTER_TABS = [
   { id: 'all', label: 'All Items', icon: Compass },
   { id: 'screenshots', label: 'Screenshots', icon: ImageIcon },
@@ -16,6 +19,9 @@ const FILTER_TABS = [
 ];
 
 export default function Home() {
+  const { user, session, loading, signOut } = useAuth();
+  const router = useRouter();
+
   const [items, setItems] = useState([]);
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,11 +34,23 @@ export default function Home() {
   const heroRef = useRef(null);
   const headerRef = useRef(null);
 
-  // Load items from database on mount
+  // Redirect to login if not authenticated
   useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  // Load items from database once session is available
+  useEffect(() => {
+    if (!session) return;
     const fetchItems = async () => {
       try {
-        const response = await fetch('https://patelyug01234--recall-fastapi-app.modal.run/api/items');
+        const response = await fetch('https://patelyug01234--recall-fastapi-app.modal.run/api/items', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
         if (response.ok) {
           const data = await response.json();
           const mapped = data.items.map(item => ({
@@ -48,7 +66,7 @@ export default function Home() {
       }
     };
     fetchItems();
-  }, []);
+  }, [session]);
 
   // GSAP hero entrance animation
   useEffect(() => {
@@ -67,13 +85,16 @@ export default function Home() {
 
   const handleAddLink = async (e) => {
     e.preventDefault();
-    if (!linkInput.trim() || isScrapingLink) return;
+    if (!linkInput.trim() || isScrapingLink || !session) return;
     setIsScrapingLink(true);
     try {
       const tempId = `link-${Date.now()}`;
       const response = await fetch('https://patelyug01234--recall-fastapi-app.modal.run/api/link', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ id: tempId, url: linkInput }),
       });
       if (!response.ok) throw new Error('Failed to process web link');
@@ -88,12 +109,15 @@ export default function Home() {
   };
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
+    if (!searchQuery.trim() || !session) return;
     setIsSearching(true);
     try {
       const response = await fetch('https://patelyug01234--recall-fastapi-app.modal.run/api/search', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
         body: JSON.stringify({ query: searchQuery, limit: 12 }),
       });
       if (response.ok) {
@@ -122,8 +146,13 @@ export default function Home() {
   const clearSearch = async () => {
     setSearchQuery('');
     setIsSearchMode(false);
+    if (!session) return;
     try {
-      const response = await fetch('https://patelyug01234--recall-fastapi-app.modal.run/api/items');
+      const response = await fetch('https://patelyug01234--recall-fastapi-app.modal.run/api/items', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`
+        }
+      });
       if (response.ok) {
         const data = await response.json();
         const mapped = data.items.map(item => ({
@@ -138,6 +167,27 @@ export default function Home() {
       console.error('Failed to fetch items on clear:', err);
     }
   };
+
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: '#0B0F19',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: '#8892b0',
+        fontFamily: "'Inter', sans-serif"
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+          <Logo size={60} />
+          <p style={{ fontSize: '0.85rem', fontWeight: 500, letterSpacing: '0.1em' }}>LOADING SESSION...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return null;
 
   const totalCount = items.length;
   const ssCount = items.filter(i => i.metadata?.type === 'screenshot').length;
@@ -213,23 +263,48 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Assistant CTA */}
-        <motion.button
-          className="hero-anim btn-primary"
-          onClick={() => setIsChatOpen(true)}
-          whileHover={{ scale: 1.04 }}
-          whileTap={{ scale: 0.97 }}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <Brain style={{ width: 16, height: 16 }} />
-          <span>Assistant</span>
-          <motion.div
-            animate={{ x: [0, 3, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
+        {/* Header Actions */}
+        <div className="hero-anim" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <motion.button
+            className="btn-primary"
+            onClick={() => setIsChatOpen(true)}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
-            <ArrowRight style={{ width: 14, height: 14 }} />
-          </motion.div>
-        </motion.button>
+            <Brain style={{ width: 16, height: 16 }} />
+            <span>Assistant</span>
+            <motion.div
+              animate={{ x: [0, 3, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            >
+              <ArrowRight style={{ width: 14, height: 14 }} />
+            </motion.div>
+          </motion.button>
+
+          <motion.button
+            onClick={signOut}
+            whileHover={{ scale: 1.04 }}
+            whileTap={{ scale: 0.97 }}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '12px',
+              border: '1px solid rgba(220, 53, 69, 0.2)',
+              background: 'rgba(255,255,255,0.7)',
+              color: '#dc3545',
+              fontSize: '0.85rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              boxShadow: '2px 2px 8px rgba(200,203,220,0.3)',
+            }}
+          >
+            <Lock style={{ width: 14, height: 14 }} />
+            <span>Sign Out</span>
+          </motion.button>
+        </div>
       </header>
 
       <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2.5rem 2rem 4rem' }}>

@@ -16,3 +16,5 @@ playwright
 python-dotenv
 requests
 beautifulsoup4
+pyjwt
+cryptography
