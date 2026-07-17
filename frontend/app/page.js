@@ -35,9 +35,38 @@ export default function Home() {
   const [isOsModalOpen, setIsOsModalOpen] = useState(false);
   const [isOsTourOpen, setIsOsTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(1);
+  const [watcherStatus, setWatcherStatus] = useState('not_setup'); // 'not_setup' | 'offline' | 'connected'
 
   const heroRef = useRef(null);
   const headerRef = useRef(null);
+
+  // Poll watcher status
+  useEffect(() => {
+    if (!session || !isOsSyncEnabled) {
+      setWatcherStatus('not_setup');
+      return;
+    }
+
+    const checkWatcherStatus = async () => {
+      try {
+        const response = await fetch('https://patelyug01234--recall-fastapi-app.modal.run/api/watcher/status', {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setWatcherStatus(data.status);
+        }
+      } catch (err) {
+        console.error('Failed to fetch watcher status:', err);
+      }
+    };
+
+    checkWatcherStatus();
+    const interval = setInterval(checkWatcherStatus, 10000);
+    return () => clearInterval(interval);
+  }, [session, isOsSyncEnabled]);
 
   // Read OS Sync setting and tour triggers on mount
   useEffect(() => {
@@ -189,6 +218,25 @@ def upload_screenshot(file_path):
         print(f"Network error: {e}")
         trigger_notification("Recall AI: Upload Error", "Network or server failure occurred.")
 
+def send_heartbeat():
+    """Send a periodic heartbeat to inform the server the watcher script is active."""
+    token = get_auth_token()
+    if not token:
+        print("Skipping heartbeat: Authentication failed.")
+        return
+    try:
+        url = BACKEND_UPLOAD_URL.replace("/upload-file", "/watcher/heartbeat")
+        headers = {
+            "Authorization": f"Bearer {token}"
+        }
+        resp = requests.post(url, headers=headers, timeout=10)
+        if resp.status_code == 200:
+            print("Heartbeat successfully sent to Recall AI.")
+        else:
+            print(f"Heartbeat failed with code {resp.status_code}: {resp.text}")
+    except Exception as e:
+        print(f"Error sending heartbeat: {e}")
+
 def watch_folder():
     print(f"Watching directory: {SCREENSHOTS_DIR}")
     print("Press Ctrl+C to exit.")
@@ -199,9 +247,17 @@ def watch_folder():
 
     existing_files = set(os.listdir(SCREENSHOTS_DIR))
     get_auth_token()
+    send_heartbeat()
+    last_heartbeat = time.time()
 
     while True:
         try:
+            # Send periodic heartbeat every 30 seconds
+            now = time.time()
+            if now - last_heartbeat > 30:
+                send_heartbeat()
+                last_heartbeat = now
+
             time.sleep(1)
             current_files = set(os.listdir(SCREENSHOTS_DIR))
             new_files = current_files - existing_files
@@ -393,6 +449,36 @@ if __name__ == '__main__':
   const totalCount = items.length;
   const ssCount = items.filter(i => i.metadata?.type === 'screenshot').length;
   const linkCount = items.filter(i => i.metadata?.type === 'link').length;
+
+  const getWatcherBadgeStyle = () => {
+    if (!isOsSyncEnabled) {
+      return {
+        text: 'INACTIVE / SETUP NEEDED',
+        color: '#64748b',
+        background: 'rgba(100,116,139,0.1)',
+        border: '1px solid rgba(100,116,139,0.2)',
+        dotColor: null
+      };
+    }
+    if (watcherStatus === 'connected') {
+      return {
+        text: 'ACTIVE & LISTENING',
+        color: '#00A389',
+        background: 'rgba(0,201,167,0.15)',
+        border: '1px solid rgba(0,201,167,0.3)',
+        dotColor: '#00C9A7'
+      };
+    }
+    return {
+      text: 'AWAITING CONNECTION...',
+      color: '#d97706',
+      background: 'rgba(217,119,6,0.15)',
+      border: '1px solid rgba(217,119,6,0.3)',
+      dotColor: '#f59e0b'
+    };
+  };
+
+  const watcherBadge = getWatcherBadgeStyle();
 
   return (
     <main style={{ minHeight: '100vh', position: 'relative', zIndex: 1 }}>
@@ -650,15 +736,15 @@ if __name__ == '__main__':
                   fontFamily: "'Outfit', sans-serif",
                   padding: '0.15rem 0.65rem',
                   borderRadius: '999px',
-                  background: isOsSyncEnabled ? 'rgba(0,201,167,0.15)' : 'rgba(100,116,139,0.1)',
-                  color: isOsSyncEnabled ? '#00A389' : '#64748b',
-                  border: isOsSyncEnabled ? '1px solid rgba(0,201,167,0.3)' : '1px solid rgba(100,116,139,0.2)',
+                  background: watcherBadge.background,
+                  color: watcherBadge.color,
+                  border: watcherBadge.border,
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.35rem',
                 }}>
-                  {isOsSyncEnabled && <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#00C9A7', animation: 'pulse-glow 1.5s infinite' }} />}
-                  {isOsSyncEnabled ? 'ACTIVE & LISTENING' : 'INACTIVE / SETUP NEEDED'}
+                  {watcherBadge.dotColor && <span style={{ width: 6, height: 6, borderRadius: '50%', background: watcherBadge.dotColor, animation: 'pulse-glow 1.5s infinite' }} />}
+                  {watcherBadge.text}
                 </span>
               </div>
               <p style={{ fontSize: '0.82rem', color: '#64748b', fontFamily: "'Inter', sans-serif", maxWidth: '600px', margin: 0 }}>

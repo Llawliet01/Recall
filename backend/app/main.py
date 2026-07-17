@@ -721,3 +721,61 @@ When referencing details, you can mention the Source number (e.g. [Source 1]).
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"RAG chat failed: {e}")
+
+
+@app.post("/api/watcher/heartbeat")
+def watcher_heartbeat(user_id: str = Depends(get_current_user)):
+    try:
+        vector_db = get_vector_db()
+        # Save sentinel item representing watcher activity
+        now_str = datetime.now(timezone.utc).isoformat()
+        metadata = {
+            "type": "watcher_status",
+            "last_seen": now_str,
+            "created_at": "1970-01-01T00:00:00Z" # force oldest creation so query orders don't get impacted
+        }
+        vector_db.add_item(
+            item_id=f"watcher_status_{user_id}",
+            text="watcher_heartbeat",
+            metadata=metadata,
+            user_id=user_id
+        )
+        return {"status": "ok", "last_seen": now_str}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to record heartbeat: {e}")
+
+
+@app.get("/api/watcher/status")
+def watcher_status_check(user_id: str = Depends(get_current_user)):
+    try:
+        vector_db = get_vector_db()
+        # Fetch sentinel row from items table directly using supabase client
+        response = vector_db.client.table("items") \
+            .select("metadata") \
+            .eq("id", f"watcher_status_{user_id}") \
+            .execute()
+        
+        if response and response.data:
+            metadata = response.data[0].get("metadata") or {}
+            last_seen_str = metadata.get("last_seen")
+            if last_seen_str:
+                last_seen_dt = datetime.fromisoformat(last_seen_str.replace("Z", "+00:00"))
+                now = datetime.now(timezone.utc)
+                diff_seconds = (now - last_seen_dt).total_seconds()
+                
+                # Active if contact was made in the last 90 seconds
+                is_active = diff_seconds < 90
+                return {
+                    "status": "connected" if is_active else "offline",
+                    "last_seen": last_seen_str,
+                    "seconds_since_last_seen": int(diff_seconds)
+                }
+        
+        return {
+            "status": "not_setup",
+            "last_seen": None,
+            "seconds_since_last_seen": None
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch status: {e}")
+

@@ -115,6 +115,25 @@ def upload_screenshot(file_path):
         print(f"Network error during upload: {e}")
         trigger_notification("Recall AI: Upload Error", "Network or server failure occurred.")
 
+def send_heartbeat():
+    """Send a periodic heartbeat to inform the server the watcher script is active."""
+    token = get_auth_token()
+    if not token:
+        print("Skipping heartbeat: Authentication failed.")
+        return
+    try:
+        url = BACKEND_UPLOAD_URL.replace("/upload-file", "/watcher/heartbeat")
+        headers = {
+            "Authorization": f"Bearer {token}"
+        }
+        resp = requests.post(url, headers=headers, timeout=10)
+        if resp.status_code == 200:
+            print("Heartbeat successfully sent to Recall AI.")
+        else:
+            print(f"Heartbeat failed with code {resp.status_code}: {resp.text}")
+    except Exception as e:
+        print(f"Error sending heartbeat: {e}")
+
 def watch_folder():
     """Poll the Screenshots directory for newly created image assets."""
     print(f"Watching directory: {SCREENSHOTS_DIR}")
@@ -127,11 +146,19 @@ def watch_folder():
 
     existing_files = set(os.listdir(SCREENSHOTS_DIR))
     
-    # Initial authentication verification on start
+    # Initial authentication verification and heartbeat on start
     get_auth_token()
+    send_heartbeat()
+    last_heartbeat = time.time()
 
     while True:
         try:
+            # Send periodic heartbeat every 30 seconds
+            now = time.time()
+            if now - last_heartbeat > 30:
+                send_heartbeat()
+                last_heartbeat = now
+
             time.sleep(1)  # scan folder contents every second
             current_files = set(os.listdir(SCREENSHOTS_DIR))
             new_files = current_files - existing_files

@@ -53,10 +53,13 @@ class VectorDB:
             formatted_results = []
             if response and response.data:
                 for row in response.data:
+                    item_id = row.get("id")
+                    if item_id and item_id.startswith("watcher_status_"):
+                        continue
                     meta = row.get("metadata") or {}
                     if meta.get("user_id") == user_id:
                         formatted_results.append({
-                            "id": row.get("id"),
+                            "id": item_id,
                             "metadata": meta,
                             "document": row.get("content"),
                             "score": round(row.get("similarity", 0.0), 4)
@@ -89,8 +92,11 @@ class VectorDB:
             formatted_results = []
             if response and response.data:
                 for row in response.data:
+                    item_id = row.get("id")
+                    if item_id and item_id.startswith("watcher_status_"):
+                        continue
                     formatted_results.append({
-                        "id": row.get("id"),
+                        "id": item_id,
                         "metadata": row.get("metadata"),
                         "document": row.get("content")
                     })
