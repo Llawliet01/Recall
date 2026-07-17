@@ -180,7 +180,8 @@ def trigger_notification(title, message):
     $objNotifyIcon.ShowBalloonTip(4000);
     """
     try:
-        subprocess.run(["powershell", "-Command", ps_command], capture_output=True)
+        creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        subprocess.run(["powershell", "-Command", ps_command], capture_output=True, creationflags=creationflags)
     except Exception as e:
         print(f"Failed to show toast: {e}")
 

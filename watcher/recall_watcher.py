@@ -104,7 +104,9 @@ def toggle_startup(enable):
         $Shortcut.WorkingDirectory = '{os.path.dirname(shortcut_path)}';
         $Shortcut.Save();
         """
-        subprocess.run(["powershell", "-Command", ps_command], capture_output=True, check=True)
+        # Prevent terminal console flashing on Windows
+        creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        subprocess.run(["powershell", "-Command", ps_command], capture_output=True, check=True, creationflags=creationflags)
         print("Created startup shortcut successfully.")
         return True
     except Exception as e:
@@ -153,7 +155,9 @@ def trigger_notification(title, message):
     $objNotifyIcon.ShowBalloonTip(4000);
     """
     try:
-        subprocess.run(["powershell", "-Command", ps_command], capture_output=True)
+        # Prevent terminal console flashing on Windows
+        creationflags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+        subprocess.run(["powershell", "-Command", ps_command], capture_output=True, creationflags=creationflags)
     except Exception as e:
         print(f"Failed to show toast notification: {e}")
 
