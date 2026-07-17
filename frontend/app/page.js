@@ -1450,25 +1450,41 @@ if __name__ == '__main__':
                     <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.5, marginBottom: '0.5rem' }}>
                       You can find the Recall app icon (purple logo) in your Windows system tray (bottom-right near the clock). Right-click it for controls:
                     </p>
-                    <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.75rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '0.55rem', lineHeight: 1.45 }}>
+                    <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.75rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '0.6rem', lineHeight: 1.45 }}>
                       <li>
                         <strong style={{ color: '#ffffff' }}>Sync Status</strong>: Displays whether the app is currently connected and tracking (`Active & Listening`) or stopped (`Paused`).
+                        <br />
+                        <span style={{ color: '#93c5fd', fontStyle: 'italic', fontSize: '0.7rem' }}>
+                          Example: If it says "Active & Listening", any screenshot you take will upload instantly.
+                        </span>
                       </li>
                       <li>
                         <strong style={{ color: '#ffffff' }}>Pause Syncing</strong>: Temporarily pauses uploads. 
                         <br />
-                        <span style={{ color: '#93c5fd', fontStyle: 'italic' }}>
+                        <span style={{ color: '#93c5fd', fontStyle: 'italic', fontSize: '0.7rem' }}>
                           Example: If you pause at screenshot 10, take screenshots 11 and 12 (private), and resume at 13, screenshots 11 & 12 are skipped automatically and never uploaded!
                         </span>
                       </li>
                       <li>
                         <strong style={{ color: '#ffffff' }}>Start on PC Boot</strong>: Toggles auto-run. If checked, the app runs invisibly the second your computer starts, so you never have to open it manually.
+                        <br />
+                        <span style={{ color: '#93c5fd', fontStyle: 'italic', fontSize: '0.7rem' }}>
+                          Example: When you turn on your PC in the morning, syncing is already active in the background.
+                        </span>
                       </li>
                       <li>
                         <strong style={{ color: '#ffffff' }}>Log Out / Reset Account</strong>: Clears your saved session credentials. Use this if you want to log in with a different Recall account.
+                        <br />
+                        <span style={{ color: '#93c5fd', fontStyle: 'italic', fontSize: '0.7rem' }}>
+                          Example: Click this to switch from your personal account to a work/school account.
+                        </span>
                       </li>
                       <li>
                         <strong style={{ color: '#ffffff' }}>Exit</strong>: Fully shuts down the application. Syncing stops completely until you manually double-click the app again to launch it.
+                        <br />
+                        <span style={{ color: '#93c5fd', fontStyle: 'italic', fontSize: '0.7rem' }}>
+                          Example: Useful if you want to stop background processing completely to free up resources.
+                        </span>
                       </li>
                     </ul>
                   </div>
