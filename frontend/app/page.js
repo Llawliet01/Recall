@@ -305,10 +305,18 @@ if __name__ == '__main__':
     }
   }, [user, loading, router]);
 
+  // Reference to keep track of search mode state inside the polling interval closure
+  const isSearchModeRef = useRef(false);
+  useEffect(() => {
+    isSearchModeRef.current = isSearchMode;
+  }, [isSearchMode]);
+
   // Load items from database once session is available
   useEffect(() => {
     if (!session) return;
     const fetchItems = async () => {
+      // Do not overwrite search results with background polling updates
+      if (isSearchModeRef.current) return;
       try {
         const response = await fetch('https://patelyug01234--recall-fastapi-app.modal.run/api/items', {
           headers: {
@@ -326,10 +334,13 @@ if __name__ == '__main__':
           setItems(mapped);
         }
       } catch (err) {
-        console.error('Failed to fetch items on mount:', err);
+        console.error('Failed to fetch items in background:', err);
       }
     };
+    
     fetchItems();
+    const interval = setInterval(fetchItems, 12000);
+    return () => clearInterval(interval);
   }, [session]);
 
   // GSAP hero entrance animation
