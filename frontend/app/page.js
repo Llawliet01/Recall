@@ -277,9 +277,15 @@ def watch_folder():
             time.sleep(5)
 
 if __name__ == '__main__':
-    if EMAIL == "your_email@example.com" or PASSWORD == "your_password":
-        print("ERROR: Please configure your password inside the script first!")
-        sys.exit(1)
+    # Prompt for email if still default
+    if EMAIL == "your_email@example.com" or not EMAIL:
+        EMAIL = input("Enter your Recall AI login email: ").strip()
+
+    # Prompt securely for password if still default or empty
+    if PASSWORD == "your_password" or not PASSWORD:
+        import getpass
+        PASSWORD = getpass.getpass("Enter your Recall AI password: ")
+
     watch_folder()
 `;
     const blob = new Blob([scriptText], { type: 'text/plain' });

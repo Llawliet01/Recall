@@ -28,3 +28,13 @@ backend/*.log
 backend/test_*.py
 backend/*.png
 backend/modal_app_request.log
+
+# PyInstaller build files
+dist/
+build/
+*.spec
+watcher/dist/
+watcher/build/
+watcher/*.spec
+watcher/icon.png
+
