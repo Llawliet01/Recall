@@ -1075,12 +1075,12 @@ if __name__ == '__main__':
                 position: 'relative',
                 width: '100%',
                 maxWidth: '540px',
-                background: 'rgba(255, 255, 255, 0.85)',
+                background: 'rgba(15, 23, 42, 0.85)',
                 backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255,255,255,0.95)',
-                borderRadius: '32px',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '28px',
                 padding: '2.25rem',
-                boxShadow: '0 25px 50px -12px rgba(108,99,255,0.25)',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5), 0 0 50px rgba(108,99,255,0.15)',
                 zIndex: 10,
               }}
             >
@@ -1090,7 +1090,7 @@ if __name__ == '__main__':
                   position: 'absolute',
                   top: '1.25rem',
                   right: '1.25rem',
-                  background: 'rgba(108,99,255,0.06)',
+                  background: 'rgba(255,255,255,0.06)',
                   border: 'none',
                   width: '32px',
                   height: '32px',
@@ -1099,7 +1099,8 @@ if __name__ == '__main__':
                   alignItems: 'center',
                   justifyContent: 'center',
                   cursor: 'pointer',
-                  color: '#6c63ff',
+                  color: '#a5b4fc',
+                  transition: 'background 0.2s',
                 }}
               >
                 <X style={{ width: 14, height: 14 }} />
@@ -1117,26 +1118,26 @@ if __name__ == '__main__':
                 }}>
                   <Laptop style={{ width: 18, height: 18, color: 'white' }} />
                 </div>
-                <h3 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: '1.25rem', color: '#1e1b4b', margin: 0 }}>
+                <h3 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: '1.25rem', color: '#ffffff', margin: 0 }}>
                   Windows Auto-Sync Setup
                 </h3>
               </div>
 
-              <p style={{ fontSize: '0.9rem', color: '#4b5563', fontFamily: "'Inter', sans-serif", lineHeight: 1.6, marginBottom: '1.25rem' }}>
-                To bypass browser security limits and upload screenshots in real-time, Recall uses a secure **local background watcher agent**.
+              <p style={{ fontSize: '0.9rem', color: '#9ca3af', fontFamily: "'Inter', sans-serif", lineHeight: 1.6, marginBottom: '1.25rem' }}>
+                To bypass browser security limits and upload screenshots in real-time, Recall uses a secure <span style={{ fontWeight: 700, color: '#a5b4fc' }}>local background watcher agent</span>.
               </p>
 
               <div style={{
-                background: 'rgba(108,99,255,0.05)',
-                border: '1px solid rgba(108,99,255,0.12)',
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: '16px',
                 padding: '1.15rem',
                 marginBottom: '1.5rem',
               }}>
-                <h4 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: '0.85rem', color: '#1e1b4b', margin: '0 0 0.5rem' }}>
+                <h4 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: '0.85rem', color: '#ffffff', margin: '0 0 0.5rem' }}>
                   Features of the Watcher Agent:
                 </h4>
-                <ul style={{ margin: 0, paddingLeft: '1.15rem', fontSize: '0.8rem', color: '#4b5563', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <ul style={{ margin: 0, paddingLeft: '1.15rem', fontSize: '0.8rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                   <li>Auto-scans your Windows Screenshots folder or OneDrive location.</li>
                   <li>Queries Windows Registry keys automatically to find custom locations.</li>
                   <li>Uploads securely using your active user session credentials.</li>
@@ -1179,14 +1180,17 @@ if __name__ == '__main__':
                   style={{
                     padding: '0.8rem 1.5rem',
                     borderRadius: '16px',
-                    border: '1px solid rgba(108,99,255,0.2)',
+                    border: '1px solid rgba(255,255,255,0.1)',
                     background: 'transparent',
-                    color: '#6c63ff',
+                    color: '#9ca3af',
                     fontFamily: "'Outfit', sans-serif",
                     fontWeight: 700,
                     fontSize: '0.85rem',
                     cursor: 'pointer',
+                    transition: 'all 0.2s',
                   }}
+                  onMouseEnter={(e) => { e.target.style.color = '#ffffff'; e.target.style.borderColor = 'rgba(255,255,255,0.2)'; }}
+                  onMouseLeave={(e) => { e.target.style.color = '#9ca3af'; e.target.style.borderColor = 'rgba(255,255,255,0.1)'; }}
                 >
                   Cancel
                 </button>
@@ -1230,12 +1234,12 @@ if __name__ == '__main__':
                 position: 'relative',
                 width: '100%',
                 maxWidth: '480px',
-                background: 'rgba(255, 255, 255, 0.90)',
-                backdropFilter: 'blur(25px)',
-                border: '1px solid rgba(255,255,255,0.95)',
-                borderRadius: '32px',
+                background: 'rgba(15, 23, 42, 0.85)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '28px',
                 padding: '2rem 2.25rem',
-                boxShadow: '0 25px 50px -12px rgba(108,99,255,0.25)',
+                boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5), 0 0 50px rgba(108,99,255,0.15)',
                 zIndex: 10,
               }}
             >
@@ -1248,7 +1252,7 @@ if __name__ == '__main__':
                       flex: 1,
                       height: '4px',
                       borderRadius: '999px',
-                      background: step <= tourStep ? '#6C63FF' : 'rgba(108,99,255,0.15)',
+                      background: step <= tourStep ? '#6C63FF' : 'rgba(255,255,255,0.15)',
                       transition: 'background 0.3s ease',
                     }}
                   />
@@ -1257,24 +1261,24 @@ if __name__ == '__main__':
 
               {tourStep === 1 && (
                 <div>
-                  <h4 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: '1.2rem', color: '#1e1b4b', margin: '0 0 0.5rem' }}>
+                  <h4 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: '1.2rem', color: '#ffffff', margin: '0 0 0.5rem' }}>
                     1. The Real-time Concept ⚡
                   </h4>
-                  <p style={{ fontSize: '0.88rem', color: '#4b5563', fontFamily: "'Inter', sans-serif", lineHeight: 1.6, marginBottom: '1.75rem' }}>
+                  <p style={{ fontSize: '0.88rem', color: '#9ca3af', fontFamily: "'Inter', sans-serif", lineHeight: 1.6, marginBottom: '1.75rem' }}>
                     When you take a screenshot, Windows automatically saves it to disk (in your Pictures or OneDrive). Web apps cannot access these files without explicit upload. 
                     <br/><br/>
-                    Our **local helper script** bridges this gap, checking for new captures every second!
+                    Our <span style={{ fontWeight: 700, color: '#a5b4fc' }}>local helper script</span> bridges this gap, checking for new captures every second!
                   </p>
                 </div>
               )}
 
               {tourStep === 2 && (
                 <div>
-                  <h4 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: '1.2rem', color: '#1e1b4b', margin: '0 0 0.5rem' }}>
+                  <h4 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: '1.2rem', color: '#ffffff', margin: '0 0 0.5rem' }}>
                     2. Download Pre-configured Script 📥
                   </h4>
-                  <p style={{ fontSize: '0.88rem', color: '#4b5563', fontFamily: "'Inter', sans-serif", lineHeight: 1.6, marginBottom: '1.25rem' }}>
-                    We generated a custom `recall_watcher.py` script containing your active login email (`{user?.email || 'your_email@example.com'}`).
+                  <p style={{ fontSize: '0.88rem', color: '#9ca3af', fontFamily: "'Inter', sans-serif", lineHeight: 1.6, marginBottom: '1.25rem' }}>
+                    We generated a custom `recall_watcher.py` script containing your active login email (<span style={{ color: '#a5b4fc', fontWeight: 600 }}>{user?.email || 'your_email@example.com'}</span>).
                   </p>
                   <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
                     <motion.button
@@ -1285,9 +1289,9 @@ if __name__ == '__main__':
                         padding: '0.65rem 1.25rem',
                         borderRadius: '12px',
                         border: 'none',
-                        background: 'rgba(108,99,255,0.10)',
-                        border: '1px solid rgba(108,99,255,0.25)',
-                        color: '#6C63FF',
+                        background: 'rgba(108,99,255,0.15)',
+                        border: '1px solid rgba(108,99,255,0.3)',
+                        color: '#a5b4fc',
                         fontFamily: "'Outfit', sans-serif",
                         fontWeight: 700,
                         fontSize: '0.8rem',
@@ -1306,10 +1310,10 @@ if __name__ == '__main__':
 
               {tourStep === 3 && (
                 <div>
-                  <h4 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: '1.2rem', color: '#1e1b4b', margin: '0 0 0.5rem' }}>
+                  <h4 style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: '1.2rem', color: '#ffffff', margin: '0 0 0.5rem' }}>
                     3. Launch and Start Syncing! 🚀
                   </h4>
-                  <p style={{ fontSize: '0.88rem', color: '#4b5563', fontFamily: "'Inter', sans-serif", lineHeight: 1.6, marginBottom: '1.5rem' }}>
+                  <p style={{ fontSize: '0.88rem', color: '#9ca3af', fontFamily: "'Inter', sans-serif", lineHeight: 1.6, marginBottom: '1.5rem' }}>
                     Open your command line in the folder you downloaded the file, and run:
                   </p>
                   <code style={{
@@ -1321,6 +1325,7 @@ if __name__ == '__main__':
                     fontFamily: 'monospace',
                     fontSize: '0.78rem',
                     marginBottom: '1.5rem',
+                    border: '1px solid rgba(255,255,255,0.05)',
                   }}>
                     python recall_watcher.py
                   </code>
@@ -1331,19 +1336,22 @@ if __name__ == '__main__':
               )}
 
               {/* Navigation buttons */}
-              <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 {tourStep > 1 ? (
                   <button
                     onClick={() => setTourStep(tourStep - 1)}
                     style={{
                       background: 'transparent',
                       border: 'none',
-                      color: '#6b7280',
+                      color: '#9ca3af',
                       fontFamily: "'Outfit', sans-serif",
                       fontWeight: 700,
                       fontSize: '0.85rem',
                       cursor: 'pointer',
+                      transition: 'color 0.2s',
                     }}
+                    onMouseEnter={(e) => e.target.style.color = '#ffffff'}
+                    onMouseLeave={(e) => e.target.style.color = '#9ca3af'}
                   >
                     Back
                   </button>
@@ -1353,12 +1361,15 @@ if __name__ == '__main__':
                     style={{
                       background: 'transparent',
                       border: 'none',
-                      color: '#9ca3af',
+                      color: '#6b7280',
                       fontFamily: "'Outfit', sans-serif",
                       fontWeight: 500,
                       fontSize: '0.85rem',
                       cursor: 'pointer',
+                      transition: 'color 0.2s',
                     }}
+                    onMouseEnter={(e) => e.target.style.color = '#9ca3af'}
+                    onMouseLeave={(e) => e.target.style.color = '#6b7280'}
                   >
                     Skip guide
                   </button>
