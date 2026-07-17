@@ -1450,22 +1450,25 @@ if __name__ == '__main__':
                     <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.5, marginBottom: '0.5rem' }}>
                       You can find the Recall app icon (purple logo) in your Windows system tray (bottom-right near the clock). Right-click it for controls:
                     </p>
-                    <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.75rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '0.5rem', lineHeight: 1.45 }}>
+                    <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.75rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '0.55rem', lineHeight: 1.45 }}>
                       <li>
-                        <strong style={{ color: '#ffffff' }}>Sync Status</strong>: Displays connection state (Active or Paused).
+                        <strong style={{ color: '#ffffff' }}>Sync Status</strong>: Displays whether the app is currently connected and tracking (`Active & Listening`) or stopped (`Paused`).
                       </li>
                       <li>
-                        <strong style={{ color: '#ffffff' }}>Pause Syncing</strong>: Temporarily pauses auto-syncing. 
+                        <strong style={{ color: '#ffffff' }}>Pause Syncing</strong>: Temporarily pauses uploads. 
                         <br />
                         <span style={{ color: '#93c5fd', fontStyle: 'italic' }}>
-                          Example: If you pause sync at screenshot 10, take screenshots 11 and 12 (private), and resume at 13, screenshots 11 & 12 are skipped automatically and never uploaded!
+                          Example: If you pause at screenshot 10, take screenshots 11 and 12 (private), and resume at 13, screenshots 11 & 12 are skipped automatically and never uploaded!
                         </span>
                       </li>
                       <li>
-                        <strong style={{ color: '#ffffff' }}>Start on PC Boot</strong>: Toggles whether the app boots up silently when Windows starts.
+                        <strong style={{ color: '#ffffff' }}>Start on PC Boot</strong>: Toggles auto-run. If checked, the app runs invisibly the second your computer starts, so you never have to open it manually.
                       </li>
                       <li>
-                        <strong style={{ color: '#ffffff' }}>Reset Account / Exit</strong>: Log out or shut down the application.
+                        <strong style={{ color: '#ffffff' }}>Log Out / Reset Account</strong>: Clears your saved session credentials. Use this if you want to log in with a different Recall account.
+                      </li>
+                      <li>
+                        <strong style={{ color: '#ffffff' }}>Exit</strong>: Fully shuts down the application. Syncing stops completely until you manually double-click the app again to launch it.
                       </li>
                     </ul>
                   </div>
