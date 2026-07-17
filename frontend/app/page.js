@@ -1397,49 +1397,15 @@ if __name__ == '__main__':
                     Auto-Sync Setup Steps ⚙️
                   </h4>
 
-                  {/* Step A */}
+                  {/* Step 1: Download */}
                   <div style={{ marginBottom: '1.25rem' }}>
                     <div style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: '#a5b4fc', marginBottom: '0.25rem' }}>
-                      1. Check Python Installation
-                    </div>
-                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', margin: 0, lineHeight: 1.5 }}>
-                      Open your command prompt or terminal and type <code style={{ color: '#ffffff', background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.3rem', borderRadius: '4px' }}>python</code>. If it launches Python, you are ready for step 3.
-                    </p>
-                  </div>
-
-                  {/* Step B */}
-                  <div style={{ marginBottom: '1.25rem', background: 'rgba(255,255,255,0.02)', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <div style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: '#a5b4fc', marginBottom: '0.35rem' }}>
-                      2. If Python is Not Installed (3 Options):
-                    </div>
-                    <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.75rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '0.5rem', lineHeight: 1.45 }}>
-                      <li>
-                        <strong style={{ color: '#ffffff' }}>Option A (Easiest)</strong>: Type <code style={{ color: '#ffffff', background: 'rgba(255,255,255,0.1)', padding: '0.05rem 0.25rem', borderRadius: '3px' }}>python</code> in command prompt. Windows will auto-open the Microsoft Store. Click "Get/Install".
-                      </li>
-                      <li>
-                        <strong style={{ color: '#ffffff' }}>Option B (Package Manager)</strong>: Run command:
-                        <code style={{ display: 'block', background: '#0f172a', padding: '0.35rem 0.5rem', borderRadius: '6px', marginTop: '0.25rem', color: '#38bdf8' }}>
-                          winget install -e --id Python.Python.3.12
-                        </code>
-                      </li>
-                      <li>
-                        <strong style={{ color: '#ffffff' }}>Option C (PowerShell Silent Installer)</strong>: Run:
-                        <code style={{ display: 'block', background: '#0f172a', padding: '0.35rem 0.5rem', borderRadius: '6px', marginTop: '0.25rem', color: '#38bdf8', fontSize: '0.68rem', overflowX: 'auto', whiteSpace: 'nowrap' }}>
-                          Invoke-WebRequest -Uri "https://www.python.org/ftp/python/3.12.3/python-3.12.3-amd64.exe" -OutFile "python_installer.exe"; Start-Process "python_installer.exe" -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1" -Wait; Remove-Item "python_installer.exe"
-                        </code>
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Step C */}
-                  <div style={{ marginBottom: '0.5rem' }}>
-                    <div style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: '#a5b4fc', marginBottom: '0.25rem' }}>
-                      3. Download & Run Auto-Sync Script
+                      1. Download the Sync Agent
                     </div>
                     <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.5, marginBottom: '0.75rem' }}>
-                      Download the custom script pre-configured with your login email:
+                      Download the custom sync script (which runs as a standalone background application):
                     </p>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}>
                       <motion.button
                         whileHover={{ scale: 1.03 }}
                         whileTap={{ scale: 0.97 }}
@@ -1464,25 +1430,44 @@ if __name__ == '__main__':
                         Download recall_watcher.py
                       </motion.button>
                     </div>
+                  </div>
+
+                  {/* Step 2: Login */}
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <div style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: '#a5b4fc', marginBottom: '0.25rem' }}>
+                      2. Graphical Native Sign-In
+                    </div>
+                    <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.5, margin: 0 }}>
+                      Double-click the file to launch it. A native login window will pop up asking for your Recall AI credentials. Enter them once, and the app will disappear silently into the background.
+                    </p>
+                  </div>
+
+                  {/* Step 3: System Tray Controls */}
+                  <div style={{ background: 'rgba(255,255,255,0.02)', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: '0.9rem', color: '#a5b4fc', marginBottom: '0.35rem' }}>
+                      3. Taskbar System Tray Controls
+                    </div>
                     <p style={{ fontSize: '0.8rem', color: '#9ca3af', lineHeight: 1.5, marginBottom: '0.5rem' }}>
-                      Open your command prompt where you downloaded the script and run:
+                      You can find the Recall app icon (purple logo) in your Windows system tray (bottom-right near the clock). Right-click it for controls:
                     </p>
-                    <code style={{
-                      display: 'block',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '8px',
-                      background: '#0f172a',
-                      color: '#38bdf8',
-                      fontFamily: 'monospace',
-                      fontSize: '0.75rem',
-                      marginBottom: '0.5rem',
-                      border: '1px solid rgba(255,255,255,0.05)',
-                    }}>
-                      python recall_watcher.py
-                    </code>
-                    <p style={{ fontSize: '0.72rem', color: '#6b7280', margin: 0, lineHeight: 1.4 }}>
-                      ⚠️ Note: It will ask for your password once on startup to securely verify and fetch a temporary session key.
-                    </p>
+                    <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.75rem', color: '#9ca3af', display: 'flex', flexDirection: 'column', gap: '0.5rem', lineHeight: 1.45 }}>
+                      <li>
+                        <strong style={{ color: '#ffffff' }}>Sync Status</strong>: Displays connection state (Active or Paused).
+                      </li>
+                      <li>
+                        <strong style={{ color: '#ffffff' }}>Pause Syncing</strong>: Temporarily pauses auto-syncing. 
+                        <br />
+                        <span style={{ color: '#93c5fd', fontStyle: 'italic' }}>
+                          Example: If you pause sync at screenshot 10, take screenshots 11 and 12 (private), and resume at 13, screenshots 11 & 12 are skipped automatically and never uploaded!
+                        </span>
+                      </li>
+                      <li>
+                        <strong style={{ color: '#ffffff' }}>Start on PC Boot</strong>: Toggles whether the app boots up silently when Windows starts.
+                      </li>
+                      <li>
+                        <strong style={{ color: '#ffffff' }}>Reset Account / Exit</strong>: Log out or shut down the application.
+                      </li>
+                    </ul>
                   </div>
                 </div>
               )}
